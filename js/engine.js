@@ -96,7 +96,7 @@
     allEnemies.forEach(function (enemy) {
       enemy.update(dt);
     });
-    player.update();
+    //player.update(); // this update function is not needed
   }
 
   // check if the enemies touch the player
@@ -231,6 +231,7 @@
    */
   global.ctx = ctx;
 
+  // this is needed in order to make the Engine accessible globally. (especially for the Key Event Listener)
   global.Engine = {
     init: init,
     reset: reset

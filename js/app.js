@@ -17,6 +17,7 @@ var individualSpeedBooster = 1; // increases speed for each respawn
 
 var canvasWidth = 505;
 var canvasHeight = 606;
+
 //
 // ### ENEMY
 //
@@ -39,6 +40,7 @@ Enemy.prototype.render = function () {
   ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
 }
 
+// Respawn enemy after it left the screen
 Enemy.prototype.respawn = function (row, speed) {
 
   this.direction = ((Math.floor((Math.random() * 2) + 1) * 2) - 3); // generates 1 or -1
@@ -56,6 +58,7 @@ Enemy.prototype.respawn = function (row, speed) {
   return this;
 }
 
+// check if this enemy touches the player.
 Enemy.prototype.touchesPlayer = function (player) {
   if (this.row != player.row)
     return false;
@@ -64,18 +67,19 @@ Enemy.prototype.touchesPlayer = function (player) {
   return false;
 }
 
+// sets the speed to zero (when Game Over)
 Enemy.prototype.stop = function () {
   this.speed = 0;
 }
 
-// Now write your own player class
-// This class requires an update(), render() and
-// a handleInput() method.
-
+//
+// ### PLAYER 
+//
 var Player = function () {
   this.sprite = 'images/char-boy.png';
 }
 
+// resets score and lives
 Player.prototype.reset = function () {
   this.respawn();
   this.score = 0;
@@ -83,6 +87,7 @@ Player.prototype.reset = function () {
   this.isGameOver = false;
 }
 
+// respawns the player when hit or when he/she reached the water
 Player.prototype.respawn = function () {
   this.row = 5; // starting position
   this.col = 2;
@@ -91,10 +96,7 @@ Player.prototype.respawn = function () {
   this.y = this.row * rowHeight + heightAdjustment;
 }
 
-Player.prototype.update = function (dt) {
-  // noop
-}
-
+// renders the player, score, lives and the Game Over text
 Player.prototype.render = function () {
   var img = Resources.get(this.sprite);
   ctx.drawImage(img, this.x, this.y);
@@ -116,6 +118,7 @@ Player.prototype.render = function () {
   }
 }
 
+// called, when the player is hit by an enemy
 Player.prototype.hit = function () {
   this.lives -= 1;
   this.score -= 100;
@@ -126,11 +129,13 @@ Player.prototype.hit = function () {
     this.respawn();
 }
 
+// called when the player scores points (e.g. reaches the water)
 Player.prototype.scored = function (points) {
-  this.score += 200;
+  this.score += points;
   this.respawn();
 }
 
+// key handler funcion of the player
 Player.prototype.handleInput = function (key) {
   if (!this.isGameOver) {
     switch (key) {
@@ -146,8 +151,6 @@ Player.prototype.handleInput = function (key) {
     case "right":
       this.col += 1;
       break;
-    case "changeChar":
-
     }
   }
 
@@ -172,8 +175,8 @@ document.addEventListener('keydown', function (e) { // changed to keydown for be
     37: 'left',
     38: 'up',
     39: 'right',
-    40: 'down',
-    46: 'changeChar',
+    40: 'down'
   };
+
   player.handleInput(allowedKeys[e.keyCode]);
 });
