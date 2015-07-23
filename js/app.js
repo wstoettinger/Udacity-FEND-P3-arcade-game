@@ -177,6 +177,6 @@ document.addEventListener('keydown', function (e) { // changed to keydown for be
     39: 'right',
     40: 'down'
   };
-
+  //bla 
   player.handleInput(allowedKeys[e.keyCode]);
 });
