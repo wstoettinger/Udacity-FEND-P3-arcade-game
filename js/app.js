@@ -119,6 +119,7 @@ Player.prototype.render = function () {
 Player.prototype.hit = function () {
   this.lives -= 1;
   this.score -= 100;
+
   if (this.lives == 0)
     this.isGameOver = true;
   else

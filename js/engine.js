@@ -14,7 +14,7 @@
  * a little simpler to work with.
  */
 
-var Engine = (function (global) {
+(function (global) {
   /* Predefine the variables we'll be using within this scope,
    * create the canvas element, grab the 2D context for that canvas
    * set the canvas elements height/width and add it to the DOM.
@@ -101,11 +101,13 @@ var Engine = (function (global) {
 
   // check if the enemies touch the player
   function checkCollisions() {
-    allEnemies.forEach(function (enemy) {
-      if (enemy.touchesPlayer(player)) {
-        playerHit();
-      }
-    });
+    if (!player.isGameOver) {
+      allEnemies.forEach(function (enemy) {
+        if (enemy.touchesPlayer(player)) {
+          playerHit();
+        }
+      });
+    }
   }
 
   // check the game status
