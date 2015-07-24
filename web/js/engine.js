@@ -29,6 +29,8 @@
   canvas.height = 606;
   doc.body.appendChild(canvas);
 
+  var nextGem = false;
+
   /* This function serves as the kickoff point for the game loop itself
    * and handles properly calling the update and render methods.
    */
@@ -48,6 +50,7 @@
     update(dt);
     render();
 
+    // checks that happen after rendering:
     checkCollisions();
     checkGameStatus();
 
@@ -55,6 +58,11 @@
      * for the next time this function is called.
      */
     lastTime = now;
+
+    // set time when the next gem will be displayed
+    if (nextGem == false) {
+      nextGem = now + Math.floor((Math.random() * 10) + 10) * 1000;
+    }
 
     /* Use the browser's requestAnimationFrame function to call this
      * function again as soon as the browser is able to draw another frame.
