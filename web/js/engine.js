@@ -29,8 +29,6 @@
   canvas.height = 606;
   doc.body.appendChild(canvas);
 
-  var nextGem = false;
-
   /* This function serves as the kickoff point for the game loop itself
    * and handles properly calling the update and render methods.
    */
@@ -58,11 +56,6 @@
      * for the next time this function is called.
      */
     lastTime = now;
-
-    // set time when the next gem will be displayed
-    if (nextGem == false) {
-      nextGem = now + Math.floor((Math.random() * 10) + 10) * 1000;
-    }
 
     /* Use the browser's requestAnimationFrame function to call this
      * function again as soon as the browser is able to draw another frame.
@@ -101,6 +94,7 @@
    * render methods.
    */
   function updateEntities(dt) {
+    gem.update(dt);
     allEnemies.forEach(function (enemy) {
       enemy.update(dt);
     });
@@ -115,6 +109,9 @@
           playerHit();
         }
       });
+      if (gem.touchesPlayer(player)) {
+        gem.hitPlayer(player);
+      }
     }
   }
 
@@ -129,6 +126,7 @@
       allEnemies.forEach(function (enemy) {
         enemy.freeze();
       });
+      gem.stop();
     }
   }
 
@@ -182,6 +180,8 @@
    * on your enemy and player entities within app.js
    */
   function renderEntities() {
+    gem.render();
+
     /* Loop through all of the objects within the allEnemies array and call
      * the render function you have defined.
      */
@@ -197,6 +197,7 @@
    * those sorts of things. It's only called once by the init() method.
    */
   function reset() {
+    gem.reset();
     allEnemies = [new Enemy(), new Enemy(), new Enemy()];
     player.reset();
   }
@@ -206,7 +207,7 @@
   }
 
   function playerScored() {
-    player.scored(200); // score points
+    player.reachedGoal();
     globalSpeedMultiplyer += 1; // increase difficulty
     allEnemies.push(new Enemy()); // add enemy;
   }
@@ -229,7 +230,8 @@
     'images/water-block.png',
     'images/grass-block.png',
     'images/enemy-bug.png',
-    'images/char-boy.png'
+    'images/char-boy.png',
+    'images/gem-blue.png'
   ]);
   Resources.onReady(init);
 

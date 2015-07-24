@@ -17,9 +17,143 @@ var individualSpeedBooster = 1; // increases speed for each respawn
 
 var canvasWidth = 505;
 var canvasHeight = 606;
+/*
+// create a function for inheritance
+Object.prototype.extend = function (objectToExtend) {
+  var classDef = function () {
+    if (arguments[0] !== Object) {
+      this.construct.apply(this, arguments);
+    }
+  };
 
+  var proto = new this(Object);
+  var superClass = this.prototype;
+
+  for (var n in objectToExtend) {
+    var item = objectToExtend[n];
+    if (item instanceof Function) item.$ = superClass;
+    proto[n] = item;
+  }
+
+  classDef.prototype = proto;
+
+  //Give this new class the same static extend method    
+  classDef.extend = this.extend;
+  return classDef;
+};
+*/
+
+//
+// ### Entity
+//
+// base class for all entities in the game (player, enemies, gems)
 function Entity() {
+  this.init();
+  this.reset();
+}
 
+// init Entity 
+Entity.prototype.init = function () {
+  // init stuff goes here.
+}
+
+// reset Entity 
+Entity.prototype.reset = function () {
+  // reset stuff goes here.
+  this.row = 0;
+  this.col = 0;
+  this.renderSprite = false;
+  this.stopped = false;
+}
+
+// change position of the entity (gets called before render)
+Entity.prototype.update = function (dt) {
+  // behaviour stuff goes here.
+  this.x = this.col * colWidth;
+  this.y = this.row * rowHeight + heightAdjustment;
+}
+
+// render the entity
+Entity.prototype.render = function () {
+  if (this.renderSprite)
+    ctx.drawImage(Resources.get(this.getSpritePath()), this.x, this.y);
+}
+
+// this function needs to be overloaded to return the image that should be displayed.
+Entity.prototype.getSpritePath = function () {
+  return "";
+}
+
+// check if this enemy touches the player (gets called after render)
+Entity.prototype.touchesPlayer = function (player) {
+  if (this.row != player.row)
+    return false;
+  if (this.x > player.x - colWidth * 0.75 && this.x < player.x + colWidth * 0.75)
+    return true;
+  return false;
+}
+
+// gets called after Entity.touchesPlayer returns true
+Entity.prototype.hitPlayer = function (player) {
+  // empty in the base class
+}
+
+// should be implemented to stop the behaviour of the entity
+Entity.prototype.stop = function () {
+  this.stopped = true;
+}
+
+//
+// ### GEM
+//
+function Gem() {
+  this.init();
+  this.reset();
+}
+
+Gem.prototype = Object.create(Entity.prototype); // inherit Gem from Entity
+Gem.prototype.constructor = Gem; // set constructor to Gem function
+
+/*  
+ * overload the reset function
+ */
+Gem.prototype.reset = function () {
+  Object.getPrototypeOf(Gem.prototype).reset.call(this); // call the function inherited by super class 
+
+  if (!this.stopped) {
+    this.renderSprite = false;
+    this.row = Math.floor((Math.random() * 3) + 1); // set a random row (1 to 3)
+    this.col = Math.floor(Math.random() * 5); // set a random row (0 to 4)
+
+    setTimeout(this.showGem, Math.floor((Math.random() * 10) + 5) * 1000, this); // set a timeout (between 10 and 20 seconds) to display the gem.
+  }
+}
+
+Gem.prototype.showGem = function (gem) {
+  if (!this.stopped) {
+    gem.renderSprite = true; // set the variable to show the gem.
+    setTimeout(gem.hideGem, Math.floor((Math.random() * 3) + 3) * 1000, gem); // set a timeout to hide it again (between 3 and 5 seconds) and then call the reset function.
+  }
+}
+
+Gem.prototype.hideGem = function (gem) {
+  gem.reset();
+}
+
+/*
+ * overload the getSpirtePath function
+ */
+Gem.prototype.getSpritePath = function () {
+  return "images/gem-blue.png";
+}
+
+/* 
+ * overload the hitPlayer function
+ */
+Gem.prototype.hitPlayer = function (player) {
+  Object.getPrototypeOf(Gem.prototype).hitPlayer.call(this); // call the function inherited by super class
+  player.scored(400);
+  this.reset();
 }
 
 //
@@ -153,6 +287,10 @@ Player.prototype.hit = function () {
 // called when the player scores points (e.g. reaches the water)
 Player.prototype.scored = function (points) {
   this.score += points;
+}
+
+Player.prototype.reachedGoal = function () {
+  this.scored(200);
   this.respawn();
 }
 
@@ -190,6 +328,7 @@ Player.prototype.handleInput = function (key) {
 
 var allEnemies = [];
 var player = new Player();
+var gem = new Gem();
 
 document.addEventListener('keydown', function (e) { // changed to keydown for better gameplay
   var allowedKeys = {
