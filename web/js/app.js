@@ -41,7 +41,13 @@ Enemy.prototype.update = function (dt) {
 
 // Draw the enemy on the screen, required method for game
 Enemy.prototype.render = function () {
-  ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
+  if (this.speed < 0) {
+    ctx.scale(-1, 1);
+    ctx.drawImage(Resources.get(this.sprite), -this.x - 1 * colWidth, this.y);
+    ctx.scale(-1, 1);
+  }
+  else
+    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
 }
 
 // Respawn enemy after it left the screen
@@ -71,9 +77,13 @@ Enemy.prototype.touchesPlayer = function (player) {
   return false;
 }
 
-// sets the speed to zero (when Game Over)
-Enemy.prototype.stop = function () {
-  this.speed = 0;
+// sets the speed to (almost) zero (when Game Over)
+Enemy.prototype.freeze = function () {
+  /*
+   * setting speed to 0 would delete the direction of the enemies, causing them to turn around on the game-over screen, that's why its multiplied.
+   */
+  if (Math.abs(this.speed) > 1)
+    this.speed *= 0.1;
 }
 
 //
@@ -108,17 +118,24 @@ Player.prototype.render = function () {
   // render score:
   ctx.fillStyle = "black";
   ctx.font = "30px Open Sans";
+  ctx.textAlign = "left";
   ctx.fillText("Score: " + player.score, 10, 36);
 
   // render lives:
   ctx.drawImage(img, canvasWidth - img.width * 0.4, -15, img.width * 0.4, img.height * 0.4);
-  ctx.fillText("" + player.lives, canvasWidth - img.width * 0.4 - 30, 36);
+  ctx.textAlign = "right";
+  ctx.fillText("" + player.lives, canvasWidth - img.width * 0.4 - 10, 36);
 
   // draw Game Over
   if (this.isGameOver) {
     ctx.fillStyle = "#2c2c2c";
+    ctx.lineWidth = 2;
+    ctx.strokeStyle = "white";
+
     ctx.font = "60px Open Sans";
-    ctx.fillText("GAME OVER", canvasWidth / 2 - 100, canvasHeight / 2 - 20);
+    ctx.textAlign = "center";
+    ctx.strokeText("GAME OVER", canvasWidth / 2, canvasHeight / 2); // white stroke border of the text
+    ctx.fillText("GAME OVER", canvasWidth / 2, canvasHeight / 2); // black fill text
   }
 }
 

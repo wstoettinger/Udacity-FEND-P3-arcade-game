@@ -127,7 +127,7 @@
     // check if the game is over and stop enemies
     if (player.isGameOver) {
       allEnemies.forEach(function (enemy) {
-        enemy.stop();
+        enemy.freeze();
       });
     }
   }
