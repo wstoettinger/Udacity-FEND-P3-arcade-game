@@ -13,7 +13,6 @@
  * the canvas' context (ctx) object globally available to make writing app.js
  * a little simpler to work with.
  */
-
 (function (global) {
   /* Predefine the variables we'll be using within this scope,
    * create the canvas element, grab the 2D context for that canvas
@@ -28,6 +27,37 @@
   canvas.width = 505;
   canvas.height = 606;
   doc.body.appendChild(canvas);
+
+  /* This function does some initial setup that should only occur once,
+   * particularly setting the lastTime variable that is required for the
+   * game loop.
+   */
+  function init() {
+    restart();
+    lastTime = Date.now();
+    player.onLevelUp(function () {
+      this.showLevelUp = true;
+      game.nextLevel();
+      Enemy.prototype.setPossibleRows(game.level.getStoneRowsIndizes());
+      setTimeout(function (engine) {
+        engine.showLevelUp = false;
+      }, 2 * 1000, this);
+    })
+    main();
+  }
+
+  function restart() {
+    globalSpeedMultiplyer = 15; // total game Speed
+    individualSpeedBooster = 1;
+    Enemy.prototype.setPossibleRows(game.level.getStoneRowsIndizes());
+    allEntities = [new Enemy(), new Enemy(), new Enemy(), gem, goal, player];
+
+    allEntities.forEach(function (entitiy) {
+      entitiy.restart();
+    });
+
+    setInterval(addEnemy, 10 * 1000); // add enemies every 10 seconds
+  }
 
   /* This function serves as the kickoff point for the game loop itself
    * and handles properly calling the update and render methods.
@@ -48,8 +78,7 @@
     update(dt);
     render();
 
-    // checks that happen after rendering:
-    checkCollisions();
+    // check game status
     checkGameStatus();
 
     /* Set our lastTime variable which is used to determine the time delta
@@ -62,16 +91,6 @@
      */
     win.requestAnimationFrame(main);
   };
-
-  /* This function does some initial setup that should only occur once,
-   * particularly setting the lastTime variable that is required for the
-   * game loop.
-   */
-  function init() {
-    reset();
-    lastTime = Date.now();
-    main();
-  }
 
   /* This function is called by main (our game loop) and itself calls all
    * of the functions which may need to update entity's data. Based on how
@@ -94,40 +113,40 @@
    * render methods.
    */
   function updateEntities(dt) {
-    gem.update(dt);
-    allEnemies.forEach(function (enemy) {
-      enemy.update(dt);
+    allEntities.forEach(function (entitiy) {
+      entitiy.update(dt);
     });
-    //player.update(); // this update function is not needed
   }
 
-  // check if the enemies touch the player
-  function checkCollisions() {
-    if (!player.isGameOver) {
-      allEnemies.forEach(function (enemy) {
-        if (enemy.touchesPlayer(player)) {
-          playerHit();
-        }
-      });
-      if (gem.touchesPlayer(player)) {
-        gem.hitPlayer(player);
-      }
-    }
+  function addEnemy() {
+    allEntities.unshift(new Enemy()); // add enemy at the beginning of the Entities array;
   }
 
-  // check the game status
+  // check the game status (happens after update and render)
   function checkGameStatus() {
-    // if the player reached the water
-    if (player.row == 0)
-      playerScored();
+
+    // check if an entity touches the player
+    allEntities.forEach(function (entity) {
+      if (entity.touchesPlayer(player)) {
+        entity.hitPlayer(player);
+
+        // when the player reaches the goal
+        if (entity instanceof Goal) {
+          globalSpeedMultiplyer += 1; // increase difficulty
+        }
+      }
+    });
 
     // check if the game is over and stop enemies
-    if (player.isGameOver) {
-      allEnemies.forEach(function (enemy) {
-        enemy.freeze();
+    if (isGameOver()) {
+      allEntities.forEach(function (entity) {
+        entity.deactivate();
       });
-      gem.stop();
     }
+  }
+
+  function isGameOver() {
+    return player.lives == 0;
   }
 
   /* This function initially draws the "game level", it will then call
@@ -137,42 +156,48 @@
    * they are just drawing the entire screen over and over.
    */
   function render() {
-    /* This array holds the relative URL to the image used
-     * for that particular row of the game level.
-     */
-    var rowImages = [
-        'images/water-block.png', // Top row is water
-        'images/stone-block.png', // Row 1 of 3 of stone
-        'images/stone-block.png', // Row 2 of 3 of stone
-        'images/stone-block.png', // Row 3 of 3 of stone
-        'images/grass-block.png', // Row 1 of 2 of grass
-        'images/grass-block.png' // Row 2 of 2 of grass
-      ],
-      numRows = 6,
-      numCols = 5,
-      row, col;
 
     ctx.fillStyle = "white"; // repaint the canvas in white to prevent artifacts;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    /* Loop through the number of rows and columns we've defined above
-     * and, using the rowImages array, draw the correct image for that
-     * portion of the "grid"
-     */
-    for (row = 0; row < numRows; row++) {
-      for (col = 0; col < numCols; col++) {
-        /* The drawImage function of the canvas' context element
-         * requires 3 parameters: the image to draw, the x coordinate
-         * to start drawing and the y coordinate to start drawing.
-         * We're using our Resources helpers to refer to our images
-         * so that we get the benefits of caching these images, since
-         * we're using them over and over.
-         */
-        ctx.drawImage(Resources.get(rowImages[row]), col * 101, row * 83);
-      }
-    }
+    game.render();
+
+    // render score:
+    ctx.fillStyle = "black";
+    ctx.font = "30px Open Sans";
+    ctx.textAlign = "left";
+    ctx.fillText("Score: " + player.score, 10, 36);
+
+    // render lives:
+    var img = Resources.get(player.sprite);
+    ctx.drawImage(img, canvasWidth - img.width * 0.4, -15, img.width * 0.4, img.height * 0.4);
+    ctx.textAlign = "right";
+    ctx.fillText("" + player.lives, canvasWidth - img.width * 0.4 - 10, 36);
 
     renderEntities();
+
+    if (this.showLevelUp) {
+      ctx.fillStyle = "#2c2c2c";
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "white";
+
+      ctx.font = "60px Open Sans";
+      ctx.textAlign = "center";
+      ctx.strokeText("Level Up", canvasWidth / 2, canvasHeight / 2); // white stroke border of the text
+      ctx.fillText("Level Up", canvasWidth / 2, canvasHeight / 2); // black fill text      
+    }
+
+    // render Game Over
+    if (isGameOver()) {
+      ctx.fillStyle = "#2c2c2c";
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = "white";
+
+      ctx.font = "60px Open Sans";
+      ctx.textAlign = "center";
+      ctx.strokeText("GAME OVER", canvasWidth / 2, canvasHeight / 2); // white stroke border of the text
+      ctx.fillText("GAME OVER", canvasWidth / 2, canvasHeight / 2); // black fill text
+    }
   }
 
   /* This function is called by the render function and is called on each game
@@ -180,44 +205,47 @@
    * on your enemy and player entities within app.js
    */
   function renderEntities() {
-    gem.render();
-
-    /* Loop through all of the objects within the allEnemies array and call
-     * the render function you have defined.
-     */
-    allEnemies.forEach(function (enemy) {
-      enemy.render();
+    allEntities.forEach(function (entity) {
+      entity.render();
     });
-
-    player.render();
-  }
-
-  /* This function does nothing but it could have been a good place to
-   * handle game reset states - maybe a new game menu or a game over screen
-   * those sorts of things. It's only called once by the init() method.
-   */
-  function reset() {
-    gem.reset();
-    allEnemies = [new Enemy(), new Enemy(), new Enemy()];
-    player.reset();
-  }
-
-  function playerHit() {
-    player.hit();
-  }
-
-  function playerScored() {
-    player.reachedGoal();
-    globalSpeedMultiplyer += 1; // increase difficulty
-    allEnemies.push(new Enemy()); // add enemy;
   }
 
   document.addEventListener('keydown', function (e) { // changed to keydown for better gameplay
     var allowedKeys = {
-      27: 'restart'
+      13: 'restart', // entire
+      27: 'restart', // escape
+      32: 'restart' // space
+        /*    37: 'restart', // left
+              38: 'restart', // up
+              39: 'restart', // right
+              40: 'restart' // down*/
+    }
+    if (isGameOver() && allowedKeys[e.keyCode] == "restart") {
+      Engine.restart();
+    }
+  });
+
+  document.addEventListener('keydown', function (e) { // changed to keydown for better gameplay
+    var allowedKeys = {
+      37: 'left',
+      38: 'up',
+      39: 'right',
+      40: 'down'
     };
-    if (allowedKeys[e.keyCode] == "restart" && player.isGameOver) {
-      Engine.reset();
+
+    switch (allowedKeys[e.keyCode]) {
+    case "up":
+      player.move(0, -1);
+      break;
+    case "down":
+      player.move(0, 1);
+      break;
+    case "left":
+      player.move(-1, 0);
+      break;
+    case "right":
+      player.move(1, 0);
+      break;
     }
   });
 
@@ -231,7 +259,11 @@
     'images/grass-block.png',
     'images/enemy-bug.png',
     'images/char-boy.png',
-    'images/gem-blue.png'
+    'images/char-cat-girl.png',
+    'images/char-horn-girl.png',
+    'images/char-pink-girl.png',
+    'images/char-princess-girl.png',
+    'images/gem-blue.png',
   ]);
   Resources.onReady(init);
 
@@ -244,7 +276,7 @@
   // this is needed in order to make the Engine accessible globally. (especially for the Key Event Listener)
   global.Engine = {
     init: init,
-    reset: reset
+    restart: restart
   };
 
 })(this);

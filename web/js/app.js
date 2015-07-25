@@ -6,7 +6,6 @@ var rows = 6;
 
 var colWidth = 101;
 var rowHeight = 83;
-var heightAdjustment = -25;
 
 var minX = -1 * colWidth;
 var maxX = cols * colWidth;
@@ -17,326 +16,541 @@ var individualSpeedBooster = 1; // increases speed for each respawn
 
 var canvasWidth = 505;
 var canvasHeight = 606;
-/*
-// create a function for inheritance
-Object.prototype.extend = function (objectToExtend) {
-  var classDef = function () {
-    if (arguments[0] !== Object) {
-      this.construct.apply(this, arguments);
+
+/* --------
+ *   GAME
+ * ========
+ * 
+ * Game logic and vairables
+ */
+var Game = Class.extend({
+  // TODO move part of the game logic from entine to Game class
+
+  levelNr: 1,
+
+  init: function () {
+    this.level = new Level();
+  },
+
+  render: function () {
+    this.level.render();
+  },
+
+  nextLevel: function () {
+    this.level.setLevel(++this.levelNr);
+  }
+});
+
+/* -------
+ *  LEVEL
+ * =======
+ * 
+ * represents one level
+ */
+var Level = Class.extend({
+  field: [],
+
+  init: function () {
+    this.reset();
+  },
+
+  restart: function () {
+    this.setLevel(1);
+    this.reset();
+  },
+
+  reset: function () {
+    this.setLevel(1);
+  },
+
+  render: function () {
+    for (var i = 0; i < this.field.length; i++) {
+      var row = this.field[i];
+      for (var j = 0; j < row.length; j++) {
+        var block = row[j];
+        block.render();
+      }
     }
-  };
+  },
 
-  var proto = new this(Object);
-  var superClass = this.prototype;
+  setLevel: function (level) {
+    switch (level) {
+    case 1:
+      this.cols = 5;
+      this.field = [];
 
-  for (var n in objectToExtend) {
-    var item = objectToExtend[n];
-    if (item instanceof Function) item.$ = superClass;
-    proto[n] = item;
+      this.field.push(this.createRow("water", this.field.length, this.cols));
+      this.field.push(this.createRow("stone", this.field.length, this.cols));
+      this.field.push(this.createRow("stone", this.field.length, this.cols));
+      this.field.push(this.createRow("stone", this.field.length, this.cols));
+      this.field.push(this.createRow("grass", this.field.length, this.cols));
+      this.field.push(this.createRow("grass", this.field.length, this.cols));
+      break;
+    case 2:
+      this.cols = 5;
+      this.field = [];
+
+      this.field.push(this.createRow("water", this.field.length, this.cols));
+      this.field.push(this.createRow("stone", this.field.length, this.cols));
+      this.field.push(this.createRow("stone", this.field.length, this.cols));
+      this.field.push(this.createRow("stone", this.field.length, this.cols));
+      this.field.push(this.createRow("stone", this.field.length, this.cols));
+      this.field.push(this.createRow("grass", this.field.length, this.cols));
+      break;
+    }
+    this.rows = this.field.length;
+  },
+
+  createRow: function (type, row, cols) {
+    var ret = [];
+    for (var i = 0; i < cols; i++)
+      ret.push(new Block(row, i, type));
+    return ret;
+  },
+
+  getStoneRowsIndizes: function () {
+    var ret = [];
+    for (var i = 0; i < this.field.length; i++) {
+      var row = this.field[i];
+      if (row[0].type == "stone")
+        ret.push(i);
+    }
+    return ret;
   }
 
-  classDef.prototype = proto;
-
-  //Give this new class the same static extend method    
-  classDef.extend = this.extend;
-  return classDef;
-};
-*/
+});
 
 //
 // ### Entity
 //
 // base class for all entities in the game (player, enemies, gems)
-function Entity() {
-  this.init();
-  this.reset();
-}
+var Entity = Class.extend({
 
-// init Entity 
-Entity.prototype.init = function () {
-  // init stuff goes here.
-}
+  // prototype variables
+  sprite: "",
+  value: 0,
+  lives: 0,
+  active: true,
+  yAdjustment: -25,
+  row: 0,
+  col: 0,
+  speed: 0,
+  display: true,
+  rotate: 0,
+  scale: {
+    x: 1,
+    y: 1
+  },
 
-// reset Entity 
-Entity.prototype.reset = function () {
-  // reset stuff goes here.
-  this.row = 0;
-  this.col = 0;
-  this.renderSprite = false;
-  this.stopped = false;
-}
+  // init Entity 
+  init: function () {
+    // init stuff goes here.
+  },
 
-// change position of the entity (gets called before render)
-Entity.prototype.update = function (dt) {
-  // behaviour stuff goes here.
-  this.x = this.col * colWidth;
-  this.y = this.row * rowHeight + heightAdjustment;
-}
+  // gets called when the game is restarted
+  restart: function () {
+    this.init();
+    // this.reset() has to be called in the subclass.init() function
+  },
 
-// render the entity
-Entity.prototype.render = function () {
-  if (this.renderSprite)
-    ctx.drawImage(Resources.get(this.getSpritePath()), this.x, this.y);
-}
+  // reset Entity, gets called when the player hits the goal or gets killed, when an enemy leaves the screen, or when a gem is collected
+  reset: function () {
+    // revert the variables back to the prototype variables
+    delete this.row;
+    delete this.col;
+    delete this.speed;
+    delete this.display;
+    delete this.active;
+    delete this.rotate;
+    delete this.scale;
 
-// this function needs to be overloaded to return the image that should be displayed.
-Entity.prototype.getSpritePath = function () {
-  return "";
-}
+    // calculate the absolute x,y position based on row and col
+    this.x = this.col * colWidth;
+    this.y = this.row * rowHeight + this.yAdjustment;
 
-// check if this enemy touches the player (gets called after render)
-Entity.prototype.touchesPlayer = function (player) {
-  if (this.row != player.row)
-    return false;
-  if (this.x > player.x - colWidth * 0.75 && this.x < player.x + colWidth * 0.75)
-    return true;
-  return false;
-}
+    if (this.showHandler)
+      clearTimeout(this.showHandler);
+    if (this.hideHandler)
+      clearTimeout(this.hideHandler);
+  },
 
-// gets called after Entity.touchesPlayer returns true
-Entity.prototype.hitPlayer = function (player) {
-  // empty in the base class
-}
+  // change position of the entity (gets called before render)
+  update: function (dt) {
+    // behaviour stuff goes here.
+    this.x += this.speed * dt * globalSpeedMultiplyer;
+  },
 
-// should be implemented to stop the behaviour of the entity
-Entity.prototype.stop = function () {
-  this.stopped = true;
-}
+  // render the entity
+  render: function () {
 
-//
-// ### GEM
-//
-function Gem() {
-  this.init();
-  this.reset();
-}
+    if (this.display) {
+      ctx.save();
+      ctx.translate(this.x + colWidth / 2, this.y + rowHeight / 2);
+      ctx.rotate(this.rotate * Math.PI / 180);
+      ctx.scale(this.scale.x, this.scale.y);
+      ctx.drawImage(Resources.get(this.sprite), -colWidth / 2, -rowHeight / 2);
+      ctx.restore();
+    }
 
-Gem.prototype = Object.create(Entity.prototype); // inherit Gem from Entity
-Gem.prototype.constructor = Gem; // set constructor to Gem function
+  },
 
-/*  
- * overload the reset function
- */
-Gem.prototype.reset = function () {
-  Object.getPrototypeOf(Gem.prototype).reset.call(this); // call the function inherited by super class 
+  // check if this entity touches the player (gets called after render)
+  touchesPlayer: function (player) {
+    if (!this.active || this instanceof Player || this.row != player.row)
+      return false;
 
-  if (!this.stopped) {
-    this.renderSprite = false;
-    this.row = Math.floor((Math.random() * 3) + 1); // set a random row (1 to 3)
-    this.col = Math.floor(Math.random() * 5); // set a random row (0 to 4)
+    return this.x > player.x - colWidth * 0.75 && this.x < player.x + colWidth * 0.75;
+  },
 
-    setTimeout(this.showGem, Math.floor((Math.random() * 10) + 5) * 1000, this); // set a timeout (between 10 and 20 seconds) to display the gem.
+  // gets called after Entity.touchesPlayer returns true
+  hitPlayer: function (player) {
+    if (this instanceof Player || !player.active)
+      return;
+    player.hitBy(this);
+  },
+
+  // returns the value of the Entity (in game score points)
+  getValue: function () {
+    return this.value;
+  },
+
+  // returns the lives of the Entity (in case of a Player, these are the absolute lives, in case of Enemies, this is -1, in case of 1-UPs this is +1) 
+  getLives: function () {
+    return this.lives;
+  },
+
+  // wrapper function which calls the show function when triggered by the timer
+  _callShow: function (self) {
+    self.show();
+  },
+
+  // shows the entity (gets rendered)
+  show: function () {
+    this.display = true;
+  },
+
+  // shows the entity until a given timeout and then hides it
+  showUntil: function (seconds) {
+    this.display = true;
+    if (this.showHandler)
+      clearTimeout(this.showHandler);
+    this.hideHandler = setTimeout(this._callHide, seconds * 1000, this); // set a timeout (between 10 and 20 seconds) to display the gem.
+  },
+
+  // wrapper function which calls the hide function when triggered by the timer
+  _callHide: function (self) {
+    self.hide();
+  },
+
+  // hides the entity (doesn't get renderd)
+  hide: function () {
+    this.display = false;
+  },
+
+  // hides the entity until a given timeout and then shows it
+  hideUntil: function (seconds) {
+    this.display = false;
+    if (this.hideHandler)
+      clearTimeout(this.hideHandler);
+    this.showHandler = setTimeout(this._callShow, seconds * 1000, this); // set a timeout (between 10 and 20 seconds) to display the gem.
+  },
+
+  // deactivates the entity (e.g. when Game Over)
+  deactivate: function () {
+    this.active = false;
+
+    if (this.showHandler)
+      clearTimeout(this.showHandler);
+    if (this.hideHandler)
+      clearTimeout(this.hideHandler);
+
+    /*
+     * setting speed to 0 would delete the direction of the enemies, causing them to turn around on the game-over screen, that's why its multiplied.
+     */
+    if (Math.abs(this.speed) > 1)
+      this.speed *= 0.1;
   }
-}
 
-Gem.prototype.showGem = function (gem) {
-  if (!this.stopped) {
-    gem.renderSprite = true; // set the variable to show the gem.
-    setTimeout(gem.hideGem, Math.floor((Math.random() * 3) + 3) * 1000, gem); // set a timeout to hide it again (between 3 and 5 seconds) and then call the reset function.
+});
+
+/* -------
+ *  Block
+ * =======
+ * 
+ * represents a block of the game area (grass, stone or water)
+ */
+var Block = Entity.extend({
+  type: "grass",
+  images: {
+    grass: "images/grass-block.png",
+    stone: "images/stone-block.png",
+    water: "images/water-block.png",
+  },
+
+  init: function (row, col, type) {
+    this.row = row;
+    this.col = col;
+    this.type = type;
+
+    this.x = this.col * colWidth;
+    this.y = this.row * rowHeight;
+    this.sprite = this.images[this.type];
   }
-}
-
-Gem.prototype.hideGem = function (gem) {
-  gem.reset();
-}
-
-/*
- * overload the getSpirtePath function
- */
-Gem.prototype.getSpritePath = function () {
-  return "images/gem-blue.png";
-}
-
-/* 
- * overload the hitPlayer function
- */
-Gem.prototype.hitPlayer = function (player) {
-  Object.getPrototypeOf(Gem.prototype).hitPlayer.call(this); // call the function inherited by super class
-  player.scored(400);
-  this.reset();
-}
+});
 
 //
 // ### ENEMY
 //
-function Enemy(row, speed) {
-  this.sprite = "images/enemy-bug.png";
-  this.respawn(row, speed);
-}
+var Enemy = Entity.extend({
 
-// Update the enemy's position, required method for game
-// Parameter: dt, a time delta between ticks
-Enemy.prototype.update = function (dt) {
-  if (this.x > maxX || this.x < minX)
-    this.respawn();
-  else
-    this.x += this.speed * dt * globalSpeedMultiplyer;
-}
+  sprite: "images/enemy-bug.png",
+  value: -100,
+  lives: -1,
+  possibleRows: [],
 
-// Draw the enemy on the screen, required method for game
-Enemy.prototype.render = function () {
-  if (this.speed < 0) {
-    ctx.scale(-1, 1);
-    ctx.drawImage(Resources.get(this.sprite), -this.x - 1 * colWidth, this.y);
-    ctx.scale(-1, 1);
+  // init 
+  init: function () {
+    this.reset();
+  },
+
+  // override the restart function
+  restart: function () {
+    this.init();
+
+    // at the beginning of the game, set the column of the enemy randomly, later they will only come form outside the canvas
+    this.col = Math.floor(Math.random() * 5); // set a random row (0 to 4)
+    this.x = this.col * colWidth;
+  },
+
+  // Respawn enemy after it left the screen
+  reset: function () {
+    this._super(); // call the inherited function
+
+    var direction = ((Math.floor((Math.random() * 2) + 1) * 2) - 3); // generates 1 or -1
+    this.row = this.possibleRows[Math.floor(Math.random() * this.possibleRows.length)];
+    this.speed = Math.floor((Math.random() * (5 + individualSpeedBooster)) + 2) * direction;
+
+    this.col = -1; // col -1 or 5
+    if (this.speed < 0) { // reset to the right most column when speed is negative
+      this.col = cols;
+
+      // horizontally flip the sprite:
+      this.scale = {
+        x: -1,
+        y: 1
+      };
+    }
+
+    // calculate the absolute x,y position based on row and col
+    this.x = this.col * colWidth;
+    this.y = this.row * rowHeight + this.yAdjustment;
+  },
+
+  // Update the enemy's position, required method for game
+  // Parameter: dt, a time delta between ticks
+  update: function (dt) {
+    this._super(dt);
+
+    // reset the Enemy when it left the game board
+    if (this.x > maxX || this.x < minX)
+      this.reset();
+  },
+
+  setPossibleRows: function (rows) {
+    this.possibleRows = rows;
   }
-  else
-    ctx.drawImage(Resources.get(this.sprite), this.x, this.y);
-}
+});
 
-// Respawn enemy after it left the screen
-Enemy.prototype.respawn = function (row, speed) {
+//
+// ### GEM
+//
+var Gem = Entity.extend({
 
-  this.direction = ((Math.floor((Math.random() * 2) + 1) * 2) - 3); // generates 1 or -1
-  this.row = typeof row !== 'undefined' ? row : Math.floor((Math.random() * 3) + 1);
-  this.speed = typeof speed !== 'undefined' ? speed : Math.floor((Math.random() * (5 + individualSpeedBooster)) + 2) * this.direction;
+  sprite: "images/gem-blue.png",
+  value: 200,
+  yAdjustment: -10,
 
-  this.col = -1; // col -1 or 5
-  if (this.direction == -1)
-    this.col = cols;
+  // init 
+  init: function () {
+    this.reset();
+  },
 
-  // calculate the absolute x,y position
-  this.x = this.col * colWidth;
-  this.y = this.row * rowHeight + heightAdjustment;
-
-  return this;
-}
-
-// check if this enemy touches the player.
-Enemy.prototype.touchesPlayer = function (player) {
-  if (this.row != player.row)
-    return false;
-  if (this.x > player.x - colWidth * 0.75 && this.x < player.x + colWidth * 0.75)
-    return true;
-  return false;
-}
-
-// sets the speed to (almost) zero (when Game Over)
-Enemy.prototype.freeze = function () {
-  /*
-   * setting speed to 0 would delete the direction of the enemies, causing them to turn around on the game-over screen, that's why its multiplied.
+  /*  
+   * override the reset function.
+   * hide the Gem, reset coordinates, set timer
    */
-  if (Math.abs(this.speed) > 1)
-    this.speed *= 0.1;
-}
+  reset: function () {
+    this._super(); // call the inherited super function
+
+    this.scale = {
+      x: 0.7,
+      y: 0.7
+    };
+
+    this.row = Math.floor((Math.random() * 3) + 1); // set a random row (1 to 3)
+    this.col = Math.floor(Math.random() * 5); // set a random row (0 to 4)
+    this.hideUntil(Math.floor((Math.random() * 5) + 6)); // set a timeout (between 5 and 10 seconds) to display the gem.
+
+    // calculate the absolute x,y position based on row and col
+    this.x = this.col * colWidth;
+    this.y = this.row * rowHeight + this.yAdjustment;
+  },
+
+  // override show function
+  show: function () {
+    this.showUntil(Math.floor((Math.random() * 3) + 3)); // set a timeout to hide it again (between 3 and 5 seconds) and then call the reset function.
+  },
+
+  // override hide function
+  hide: function () {
+    this.reset();
+  },
+
+  // override hitPlayer function
+  hitPlayer: function (player) {
+    if (this.display) {
+      this._super(player);
+      this.reset();
+    }
+  }
+});
 
 //
 // ### PLAYER 
 //
-var Player = function () {
-  this.sprite = 'images/char-boy.png';
-}
+var Player = Entity.extend({
+  sprite: "images/char-boy.png",
+  score: 0,
+  lives: 3,
+  chars: [
+    "images/char-boy.png",
+    "images/char-cat-girl.png",
+    "images/char-horn-girl.png",
+    "images/char-pink-girl.png",
+    "images/char-princess-girl.png",
+  ],
+  charValues: [
+    0,
+    100,
+    100,
+    100,
+    200,
+  ],
+  charNr: 0,
+  // get called when the player finishes a level
+  levelUpCallbacks: [],
 
-// resets score and lives
-Player.prototype.reset = function () {
-  this.respawn();
-  this.score = 0;
-  this.lives = 3;
-  this.isGameOver = false;
-}
+  init: function () {
+    this.reset();
+  },
 
-// respawns the player when hit or when he/she reached the water
-Player.prototype.respawn = function () {
-  this.row = 5; // starting position
-  this.col = 2;
+  restart: function () {
+    this.reset();
 
-  this.x = this.col * colWidth;
-  this.y = this.row * rowHeight + heightAdjustment;
-}
+    delete this.score;
+    delete this.lives;
+    delete this.charNr;
+  },
 
-// renders the player, score, lives and the Game Over text
-Player.prototype.render = function () {
-  var img = Resources.get(this.sprite);
-  ctx.drawImage(img, this.x, this.y);
+  reset: function () {
+    this._super(); // call the inherited super function
 
-  // render score:
-  ctx.fillStyle = "black";
-  ctx.font = "30px Open Sans";
-  ctx.textAlign = "left";
-  ctx.fillText("Score: " + player.score, 10, 36);
+    this.row = 5; // starting position
+    this.col = 2;
 
-  // render lives:
-  ctx.drawImage(img, canvasWidth - img.width * 0.4, -15, img.width * 0.4, img.height * 0.4);
-  ctx.textAlign = "right";
-  ctx.fillText("" + player.lives, canvasWidth - img.width * 0.4 - 10, 36);
+    this.sprite = this.chars[this.charNr];
 
-  // draw Game Over
-  if (this.isGameOver) {
-    ctx.fillStyle = "#2c2c2c";
-    ctx.lineWidth = 2;
-    ctx.strokeStyle = "white";
+    this.x = this.col * colWidth;
+    this.y = this.row * rowHeight + this.yAdjustment;
+  },
 
-    ctx.font = "60px Open Sans";
-    ctx.textAlign = "center";
-    ctx.strokeText("GAME OVER", canvasWidth / 2, canvasHeight / 2); // white stroke border of the text
-    ctx.fillText("GAME OVER", canvasWidth / 2, canvasHeight / 2); // black fill text
-  }
-}
+  move: function (moveCols, moveRows) {
+    if (this.active) {
 
-// called, when the player is hit by an enemy
-Player.prototype.hit = function () {
-  this.lives -= 1;
-  this.score -= 100;
+      this.col += moveCols;
+      this.row += moveRows;
 
-  if (this.lives == 0)
-    this.isGameOver = true;
-  else
-    this.respawn();
-}
+      // check if player would move off screen
+      if (this.row < 0)
+        this.row = 0;
+      else if (this.row >= rows)
+        this.row = rows - 1;
 
-// called when the player scores points (e.g. reaches the water)
-Player.prototype.scored = function (points) {
-  this.score += points;
-}
+      // check if player would move off screen
+      if (this.col < 0)
+        this.col = 0;
+      else if (this.col >= cols)
+        this.col = cols - 1;
 
-Player.prototype.reachedGoal = function () {
-  this.scored(200);
-  this.respawn();
-}
-
-// key handler funcion of the player
-Player.prototype.handleInput = function (key) {
-  if (!this.isGameOver) {
-    switch (key) {
-    case "up":
-      this.row -= 1;
-      break;
-    case "down":
-      this.row += 1;
-      break;
-    case "left":
-      this.col -= 1;
-      break;
-    case "right":
-      this.col += 1;
-      break;
+      // calculate the absolute x,y position based on row and col
+      this.x = this.col * colWidth;
+      this.y = this.row * rowHeight + this.yAdjustment;
     }
+  },
+
+  hitBy: function (entity) {
+    // interact with the entity by adding its value and lives
+
+    this.score += entity.getValue();
+    this.lives += entity.getLives();
+
+    if (entity instanceof Enemy) {
+      if (this.lives > 0)
+        this.reset();
+      else
+        this.deactivate();
+    }
+    else if (entity instanceof Goal) {
+      this.score += this.value; // each char has a different value
+      this.nextChar();
+      this.reset();
+    }
+  },
+
+  nextChar: function () {
+    this.charNr++;
+    if (this.charNr >= this.chars.length) {
+      this.charNr = 0;
+
+      this.levelUpCallbacks.forEach(function (func) {
+        func();
+      });
+    }
+    this.value = this.charValues[this.charNr]; // each char has a different value
+  },
+
+  onLevelUp: function (func) {
+    this.levelUpCallbacks.push(func);
   }
+});
 
-  if (this.row < 0)
-    this.row = 0;
-  else if (this.row >= rows)
-    this.row = rows - 1;
-  if (this.col < 0)
-    this.col = 0;
-  else if (this.col >= cols)
-    this.col = cols - 1;
+//
+// ### GOAL
+// this class represents the goal wich the player has to reach (the top row).
+var Goal = Entity.extend({
+  sprite: "images/selector.png",
+  value: 400,
 
-  this.x = this.col * 101;
-  this.y = this.row * 83 - 25;
-}
+  // init 
+  init: function () {
+    this.reset();
+  },
 
-var allEnemies = [];
+  reset: function () {
+    this._super();
+    this.display = false;
+  },
+
+  touchesPlayer: function (player) {
+    if (this.row == player.row)
+      return true;
+    return false;
+  }
+});
+
 var player = new Player();
 var gem = new Gem();
+var goal = new Goal();
+var allEntities = [];
 
-document.addEventListener('keydown', function (e) { // changed to keydown for better gameplay
-  var allowedKeys = {
-    37: 'left',
-    38: 'up',
-    39: 'right',
-    40: 'down'
-  };
-
-  player.handleInput(allowedKeys[e.keyCode]);
-});
+var game = new Game();
