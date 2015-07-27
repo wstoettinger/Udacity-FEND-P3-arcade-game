@@ -16,7 +16,7 @@ This game can be run offline in your browser, all you need to do is download the
 ## Gameplay
 
 - All 5 characters of your team have to reach the water to get to the next level.
-- Move your character with the Arrow keys '&larr;, &rarr;, &uarr;, &darr;'.
+- Move your character with the Arrow keys `&larr;, &rarr;, &uarr;, &darr;`.
 - On the way you have to avoid bugs which cross the game on the stone bricks from left and right.
 - Each player has a different "value" when reaching the water. The princess (5th) having the most.
 - Collecting gems will give you extra points.
