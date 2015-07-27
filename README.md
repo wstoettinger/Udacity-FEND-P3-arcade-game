@@ -1,6 +1,8 @@
 frontend-nanodegree-arcade-game
 ===============================
 
+(c) Wolfgang Stöttinger 2015
+
 This is my version of the Udacity FEND Project 3 Game Frogger.
 
 ## Download & Installation
