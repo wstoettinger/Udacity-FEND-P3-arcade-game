@@ -1,9 +1,13 @@
 frontend-nanodegree-arcade-game
 ===============================
 
+This code was downloaded from https://github.com/wstoettinger/frontend-nanodegree-arcade-game
+  
 (c) Wolfgang Stöttinger 2015
 
-This is my version of the Udacity FEND Project 3 Game Frogger.
+It is my version of the Udacity FEND Project 3 Game Frogger.
+
+This game is also hosted here for online play: https://gentle-inlet-8594.herokuapp.com/
 
 ## Download & Installation
 
