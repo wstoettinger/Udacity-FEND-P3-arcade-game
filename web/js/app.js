@@ -188,10 +188,10 @@ var Entity = Class.extend({
 
     if (this.display) {
       ctx.save();
-      ctx.translate(this.x + COLD_WIDTH / 2, this.y + ROW_HEIGHT / 2);
+      ctx.translate(this.x + COL_WIDTH / 2, this.y + ROW_HEIGHT / 2);
       ctx.rotate(this.rotate * Math.PI / 180);
       ctx.scale(this.scale.x, this.scale.y);
-      ctx.drawImage(Resources.get(this.sprite), -COLD_WIDTH / 2, -ROW_HEIGHT / 2);
+      ctx.drawImage(Resources.get(this.sprite), -COL_WIDTH / 2, -ROW_HEIGHT / 2);
       ctx.restore();
     }
 
@@ -202,7 +202,7 @@ var Entity = Class.extend({
     if (!this.active || this instanceof Player || this.row != player.row)
       return false;
 
-    return this.x > player.x - COLD_WIDTH * 0.75 && this.x < player.x + COLD_WIDTH * 0.75;
+    return this.x > player.x - COL_WIDTH * 0.75 && this.x < player.x + COL_WIDTH * 0.75;
   },
 
   // gets called after Entity.touchesPlayer returns true
@@ -295,7 +295,7 @@ var Block = Entity.extend({
     this.col = col;
     this.type = type;
 
-    this.x = this.col * COLD_WIDTH;
+    this.x = this.col * COL_WIDTH;
     this.y = this.row * ROW_HEIGHT;
     this.sprite = this.images[this.type];
   }
@@ -322,7 +322,7 @@ var Enemy = Entity.extend({
 
     // at the beginning of the game, set the column of the enemy randomly, later they will only come form outside the canvas
     this.col = Math.floor(Math.random() * 5); // set a random row (0 to 4)
-    this.x = this.col * COLD_WIDTH;
+    this.x = this.col * COL_WIDTH;
   },
 
   // Respawn enemy after it left the screen
@@ -345,7 +345,7 @@ var Enemy = Entity.extend({
     }
 
     // calculate the absolute x,y position based on row and col
-    this.x = this.col * COLD_WIDTH;
+    this.x = this.col * COL_WIDTH;
     this.y = this.row * ROW_HEIGHT + this.yAdjustment;
   },
 
@@ -395,7 +395,7 @@ var Gem = Entity.extend({
     this.hideUntil(Math.floor((Math.random() * 5) + 6)); // set a timeout (between 5 and 10 seconds) to display the gem.
 
     // calculate the absolute x,y position based on row and col
-    this.x = this.col * COLD_WIDTH;
+    this.x = this.col * COL_WIDTH;
     this.y = this.row * ROW_HEIGHT + this.yAdjustment;
   },
 
@@ -463,7 +463,7 @@ var Player = Entity.extend({
 
     this.sprite = this.chars[this.charNr];
 
-    this.x = this.col * COLD_WIDTH;
+    this.x = this.col * COL_WIDTH;
     this.y = this.row * ROW_HEIGHT + this.yAdjustment;
   },
 
@@ -486,7 +486,7 @@ var Player = Entity.extend({
         this.col = COLS - 1;
 
       // calculate the absolute x,y position based on row and col
-      this.x = this.col * COLD_WIDTH;
+      this.x = this.col * COL_WIDTH;
       this.y = this.row * ROW_HEIGHT + this.yAdjustment;
     }
   },
